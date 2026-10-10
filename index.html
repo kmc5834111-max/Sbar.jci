@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SBAR Handover (JCI)</title>
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
+<style>
+:root{--t:#0f766e;--b:#cbd5e1;--tx:#0f172a}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 system-ui,sans-serif;background:#f1f5f9;color:var(--tx)}
+header{background:var(--t);color:#fff;padding:10px 12px;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0 0 6px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bar select{flex:1;min-width:150px;margin:0}
+button{border:0;border-radius:8px;padding:8px 12px;font-weight:600;background:#fff;color:var(--t);cursor:pointer}
+button.d{background:#fee2e2;color:#b91c1c;padding:4px 8px}
+button.p{background:#ccfbf1}
+main{max-width:980px;margin:auto;padding:10px}
+section{background:#fff;border:1px solid var(--b);border-radius:12px;padding:12px;margin-bottom:10px;break-inside:avoid}
+section h2{margin:0 0 8px;font-size:14px;color:var(--t);text-transform:uppercase;letter-spacing:.04em}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.w{grid-column:1/-1}
+label{display:block;font-size:11px;font-weight:600;color:#475569}
+input,select,textarea{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--b);border-radius:8px;background:#fff;margin-top:2px;color:var(--tx)}
+textarea{min-height:56px;resize:vertical}
+label.c{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:500;color:var(--tx)}
+label.c input{width:auto;margin:0}
+.al input{background:#fef2f2;border-color:#ef4444;font-weight:700}
+.tw{overflow-x:auto;margin-bottom:6px}
+table{border-collapse:collapse;width:100%;min-width:680px}
+td,th{border:1px solid var(--b);padding:2px;font-size:11px}
+th{background:#f8fafc}
+td input,td select{border:0;margin:0;padding:4px;border-radius:0}
+.bad{background:#fecaca!important;font-weight:700}
+.pi{display:none}
+small{color:#64748b;display:block;margin-top:8px}
+[hidden]{display:none!important}
+.cards{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.sts{grid-template-columns:repeat(auto-fit,minmax(90px,1fr));margin:8px 0}
+.sts div{background:#fff;border:1px solid var(--b);border-radius:10px;padding:8px;text-align:center;font-size:11px}
+.sts b{display:block;font-size:20px}
+.cd{background:#fff;border:1px solid var(--b);border-left:6px solid #94a3b8;border-radius:12px;padding:10px;cursor:pointer;break-inside:avoid;font-size:13px}
+.cd p{margin:3px 0}
+.k-C{border-left-color:#dc2626}.k-G{border-left-color:#f59e0b}.k-S{border-left-color:#16a34a}
+.chip{display:inline-block;padding:1px 7px;border-radius:99px;background:#e2e8f0;font-size:11px;font-weight:600;margin:2px 2px 0 0}
+.chip.r{background:#fecaca;color:#991b1b}
+body.dv .fo{display:none}
+@media print{
+body.dv .sig{display:none!important}
+body{background:#fff;font-size:11px}
+header,.noprint{display:none!important}
+.pi{display:block}.sig.pi{display:flex;gap:30px;margin-top:28px}
+.sig div{flex:1;border-top:1px solid #000;padding-top:3px}
+main{max-width:none;padding:0}
+section{border:1px solid #999;border-radius:0;padding:6px;margin-bottom:6px}
+input,select,textarea{border:0;border-bottom:1px solid #ccc;border-radius:0;padding:1px 0;appearance:none;-webkit-appearance:none;background:transparent}
+textarea{resize:none;overflow:visible;min-height:0}
+.tw{overflow:visible}table{min-width:0}
+}
+</style></head>
+<body>
+<header>
+<h1>SBAR Shift Handover · JCI</h1>
+<div class="bar">
+<button onclick="goD()">☰ All patients</button>
+<select id="ps" class="fo" aria-label="Select patient"></select>
+<button onclick="newP()">+ Patient</button>
+<button class="p" onclick="window.print()">🖨 Print</button>
+<button class="d fo" onclick="delP()">Delete</button>
+</div>
+</header>
+<main>
+<div class="pi"><h2 style="margin:0">SBAR Handover Report</h2><div id="pd"></div></div>
+<div id="dash"></div>
+<div id="form"></div>
+<div class="pi sig"><div>Outgoing nurse (name / signature / time)</div><div>Incoming nurse (name / signature / time)</div></div>
+<small class="noprint">Built around JCI patient safety goals: correct patient identification, effective handover communication, high-alert medication safety and fall-risk reduction, plus discharge planning. Vital-sign highlights are general alerts only. Always follow your hospital's own policy and early warning score.</small>
+</main>
+<script>
+const K='sbar_jci_v1';
+let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+S=S&&S.pts?S:{h:{},pts:[],cur:null};
+const $=id=>document.getElementById(id),
+esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}},
+cur=()=>S.pts.find(p=>p.id===S.cur),
+nowT=()=>new Date().toTimeString().slice(0,5),
+O=a=>a.map(x=>`<option>${x}</option>`).join('');
+
+function F(l,k,t,o,cls){
+ const a=`data-k="${k}"`;
+ if(t==='chk')return `<label class="c ${cls||'w'}"><input type="checkbox" ${a}> ${l}</label>`;
+ const e=t==='ta'?`<textarea ${a}></textarea>`:t==='sel'?`<select ${a}><option value=""></option>${O(o)}</select>`:`<input ${a} type="${t||'text'}">`;
+ return `<label class="${cls||''}">${l}${e}</label>`;
+}
+const sec=(t,h)=>`<section><h2>${t}</h2>${h}</section>`,grid=h=>`<div class="g">${h}</div>`,
+chks=a=>a.map(([l,k])=>F(l,k,'chk')).join(''),
+LVL=['Low','Moderate','High'];
+
+$('form').innerHTML=
+sec('1. Patient identification',grid(
+ F('Patient name','name')+F('MRN / Patient ID','mrn')+F('Date of birth','dob','date')+F('Sex','sex','sel',['Male','Female','Other'])+
+ F('Ward / Bed','bed')+F('Admission date','adm','date')+F('Attending physician','doc')+F('Code status','code','sel',['Full code','DNR','Limited'])+
+ F('Isolation precautions','iso','sel',['None','Contact','Droplet','Airborne'])+
+ F('ALLERGIES (drug / food / latex) – write NKDA if none','alg','text',0,'w al')+
+ chks([['Two patient identifiers verified (name + MRN or DOB)','id1'],['ID band checked and legible','id2']])))+
+sec('2. Situation (S)',grid(
+ F('Diagnosis / reason for admission','dx','text',0,'w')+F('Current condition','cond','sel',['Stable','Guarded','Critical'])+F('Pain score (0–10)','pain','number')+
+ F('Current situation / reason for handover','sit','ta',0,'w')))+
+sec('3. Background (B)',grid(
+ F('Medical / surgical history','pmh','ta',0,'w')+F('Procedures this admission','proc','ta')+F('Key results / investigations','labs','ta')+
+ F('Lines, tubes, drains, wounds','lines','ta')+F('Diet','diet','sel',['Normal','Soft','Liquid','NPO','Diabetic','Other'])+F('Mobility','mob','sel',['Independent','Assisted','Bedbound'])))+
+sec('4. Assessment (A) – Vital signs',
+ `<div class="tw"><table id="vt"></table></div><button class="noprint" onclick="aL('v')">+ Add vitals</button>`+
+ `<div class="g" style="margin-top:8px">`+F('Fall risk','fall','sel',LVL)+F('Pressure injury risk (Braden)','pu','sel',LVL)+F('Nutrition risk','nut','sel',LVL)+
+ F('Systems assessment (neuro, resp, CV, GI/GU, skin)','as','ta',0,'w')+`</div>`)+
+sec('5. Recommendations (R)',grid(
+ F('Plan of care / recommendations','plan','ta',0,'w')+F('Escalation: when to call the doctor','esc','ta')+F('Patient / family communication & education','fam','ta'))+
+ `<div id="tl" style="margin-top:8px"></div><div class="bar noprint"><input id="tn" placeholder="Pending task / test…" style="flex:1"><button class="p" onclick="aT()">+ Task</button></div>`)+
+sec('6. Medication chart <span style="font-size:11px;text-transform:none">(tick High-alert for double-check)</span>',
+ `<div class="tw"><table id="mt"></table></div><button class="noprint" onclick="aL('m')">+ Add medication</button>`)+
+sec('7. Discharge planning',grid(
+ F('Discharge status','ds','sel',['Not yet planned','Planned','Ready for discharge','Discharged'])+F('Expected discharge date','edd','date')+
+ F('Destination','dd','sel',['Home','Home care','Transfer to another facility','Other'])+F('Follow-up appointment','fu')+
+ chks([['Medication reconciliation completed','mr'],['Patient/family education with teach-back done','ed'],['Discharge summary completed','sm'],['Follow-up arranged','fa'],['Transport arranged','tr'],['Caregiver informed','cg'],['Belongings and documents returned','bl']])+
+ F('Discharge instructions (diet, activity, medicines, warning signs)','di','ta',0,'w')))+
+sec('8. Handover verification',grid(
+ chks([['Handover given at bedside, patient/family involved','hb'],['Opportunity for questions / read-back given','rb'],['Pending tests, critical results and tasks communicated','pr'],['High-alert medications reviewed together','ha'],['Patient identity re-verified by receiving nurse','pv']])+
+ F('Outgoing nurse','on')+F('Incoming nurse','nin')+F('Handover time','ht','time')));
+
+$('dash').innerHTML=sec('Ward handover',grid(F('Ward / Unit','h_ward')+F('Shift','h_shift','sel',['Morning','Evening','Night'])+F('Date','h_date','date')))+
+`<div id="st" class="g sts"></div><input id="q" class="noprint" placeholder="Search name, bed or MRN…" oninput="rD()" style="margin-bottom:8px"><div id="cd" class="g cards"></div>`;
+function rD(){
+ const L=S.pts,q=($('q').value||'').toLowerCase(),c=(k,v)=>L.filter(p=>p.f[k]==v).length,
+ due=p=>p.m.filter(m=>!m.s||m.s=='Due').length,tk=p=>p.tk.filter(t=>!t.d).length;
+ $('st').innerHTML=[['Patients',L.length],['Critical',c('cond','Critical')],['Guarded',c('cond','Guarded')],['Meds due',L.reduce((a,p)=>a+due(p),0)],['High fall risk',c('fall','High')],['Ready to discharge',c('ds','Ready for discharge')]].map(([l,n])=>`<div><b>${n}</b>${l}</div>`).join('');
+ const R=L.filter(p=>[p.f.name,p.f.bed,p.f.mrn].join(' ').toLowerCase().includes(q));
+ $('cd').innerHTML=R.length?R.map(p=>{const f=p.f,v=p.v[p.v.length-1]||{},vb=k=>`<b class="${bad(k,v[k])?'bad':''}">${esc(v[k]||'–')}</b>`;
+  return `<div class="cd k-${(f.cond||'-')[0]}" onclick="openP('${p.id}')">
+<div style="font-size:15px;font-weight:700">${esc(f.name||'New patient')}<span style="float:right">${esc(f.bed||'')}</span></div>
+<p>${esc(f.mrn||'')}${f.dob?' · DOB '+esc(f.dob):''}</p><p>${esc(f.dx||'No diagnosis entered')}</p>
+${f.alg?`<p><span class="chip r">⚠ ${esc(f.alg)}</span></p>`:''}
+<p>${f.cond?`<span class="chip ${f.cond=='Critical'?'r':''}">${esc(f.cond)}</span>`:''}${f.code?`<span class="chip">${esc(f.code)}</span>`:''}${f.iso&&f.iso!='None'?`<span class="chip r">${esc(f.iso)}</span>`:''}${f.fall=='High'?'<span class="chip r">High fall risk</span>':''}${f.ds&&f.ds!='Not yet planned'?`<span class="chip">D/C: ${esc(f.ds)}</span>`:''}</p>
+<p>BP ${vb('bp')} · HR ${vb('hr')} · SpO₂ ${vb('spo2')}</p><p>💊 ${due(p)} due · ☐ ${tk(p)} tasks</p></div>`}).join(''):'<p>No patients found. Tap “+ Patient” to add one.</p>'}
+function show(v){document.body.classList.toggle('dv',v=='d');$('dash').hidden=v!='d';$('form').hidden=v=='d';if(v=='d')rD();scrollTo(0,0)}
+function goD(){save();show('d')}
+function openP(id){S.cur=id;save();sel();show('f');load()}
+function bad(c,v){const n=parseFloat(v);if(isNaN(n))return false;
+ return c=='bp'?(n>=180||n<90):c=='hr'?(n>120||n<50):c=='rr'?(n>24||n<10):c=='spo2'?n<92:c=='temp'?(n>=38||n<36):false}
+const LC={v:[['Time','t','time'],['BP','bp'],['HR','hr'],['RR','rr'],['SpO₂ %','spo2'],['Temp °C','temp'],['GCS','gcs']],
+m:[['Drug','n'],['Dose','d'],['Route','r','sel',['PO','IV','IM','SC','SL','INH','Topical']],['Frequency','f','sel',['STAT','OD','BD','TDS','QID','PRN']],['Time','t','time'],['High-alert','h','chk'],['Status','s','sel',['Due','Given','Held','Refused']],['Initials','i']]};
+function rL(k){const p=cur();
+ $(k+'t').innerHTML='<tr>'+LC[k].map(c=>`<th>${c[0]}</th>`).join('')+'<th class="noprint"></th></tr>'+
+ p[k].map((r,i)=>'<tr'+(k=='m'&&r.h?' style="background:#fff7ed"':'')+'>'+LC[k].map(c=>{
+  const v=r[c[1]]??'',a=`onchange="uL('${k}',${i},'${c[1]}',this)"`;
+  return '<td>'+(c[2]=='chk'?`<input type="checkbox" ${v?'checked':''} ${a}>`:
+   c[2]=='sel'?`<select ${a}><option></option>${c[3].map(o=>`<option ${o==v?'selected':''}>${o}</option>`).join('')}</select>`:
+   `<input type="${c[2]||'text'}" value="${esc(v)}" class="${k=='v'&&bad(c[1],v)?'bad':''}" ${a}>`)+'</td>'}).join('')+
+  `<td class="noprint"><button class="d" onclick="dL('${k}',${i})">×</button></td></tr>`).join('')}
+function uL(k,i,c,el){cur()[k][i][c]=el.type=='checkbox'?el.checked:el.value;save();
+ if(k=='v')el.classList.toggle('bad',bad(c,el.value));else if(k=='m'&&c=='h')rL('m')}
+function aL(k){cur()[k].push(k=='v'?{t:nowT()}:{s:'Due'});save();rL(k)}
+function dL(k,i){cur()[k].splice(i,1);save();rL(k)}
+
+function rT(){$('tl').innerHTML=cur().tk.map((t,i)=>`<label class="c"><input type="checkbox" ${t.d?'checked':''} onchange="cur().tk[${i}].d=this.checked;save()"> ${esc(t.x)} <button class="d noprint" onclick="dT(${i})">×</button></label>`).join('')}
+function aT(){const e=$('tn'),x=e.value.trim();if(!x)return;cur().tk.push({x});e.value='';save();rT()}
+function dT(i){cur().tk.splice(i,1);save();rT()}
+
+function sel(){$('ps').innerHTML=S.pts.map(p=>`<option value="${p.id}" ${p.id==S.cur?'selected':''}>${esc(p.f.bed||'')} ${esc(p.f.name||'New patient')}</option>`).join('')}
+function newP(){const p={id:'p'+Date.now(),f:{},v:[],m:[],tk:[]};S.pts.push(p);S.cur=p.id;save();sel();show('f');load()}
+function delP(){if(!cur()||!confirm('Delete this patient record?'))return;
+ S.pts=S.pts.filter(p=>p.id!=S.cur);S.cur=S.pts[0]?.id;save();sel();if(S.cur)load();show('d')}
+function fit(e){(e?[e]:document.querySelectorAll('textarea')).forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+2+'px'})}
+function load(){const p=cur();
+ document.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=(k.startsWith('h_')?S.h:p.f)[k];
+  if(el.type=='checkbox')el.checked=!!v;else el.value=v??''});
+ rL('v');rL('m');rT();fit()}
+$('ps').onchange=e=>{S.cur=e.target.value;save();load()};
+document.addEventListener('input',e=>{const el=e.target,k=el.dataset&&el.dataset.k;if(!k)return;
+ (k.startsWith('h_')?S.h:cur().f)[k]=el.type=='checkbox'?el.checked:el.value;save();
+ if(k=='name'||k=='bed')sel();if(el.tagName=='TEXTAREA')fit(el)});
+window.onbeforeprint=()=>{fit();$('pd').textContent=[S.h.h_ward,S.h.h_shift,S.h.h_date].filter(Boolean).join(' · ')+'  |  Printed '+new Date().toLocaleString()};
+
+if(!S.h.h_date)S.h.h_date=new Date().toISOString().slice(0,10);
+document.querySelectorAll('[data-k^="h_"]').forEach(el=>el.value=S.h[el.dataset.k]||'');
+if(S.pts.length){if(!cur())S.cur=S.pts[0].id;sel();load()}
+show('d');
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body></html>
